@@ -48,6 +48,3 @@ The model classifies garbage into **6 categories**:
 > Dataset imbalance exists (e.g., fewer PAPER samples), which affects recall.
 
 ---
-
-## 📁 Project Structure
-
