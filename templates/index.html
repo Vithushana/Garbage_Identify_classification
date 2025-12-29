@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Garbage Detection</title>
+</head>
+<body>
+  <h2>Upload Image - Garbage Detection</h2>
+
+  <input type="file" id="img" />
+  <button onclick="send()">Detect</button>
+
+  <h3>JSON Output</h3>
+  <pre id="out"></pre>
+
+  <div>
+    <h3>Result Image</h3>
+    <img id="resImg" style="max-width:600px;" />
+  </div>
+
+<script>
+async function send() {
+  const file = document.getElementById("img").files[0];
+  if (!file) return alert("Choose image first");
+
+  const fd = new FormData();
+  fd.append("image", file);
+
+  const r = await fetch("/predict", { method: "POST", body: fd });
+  const data = await r.json();
+
+  document.getElementById("out").textContent = JSON.stringify(data, null, 2);
+
+  if (data.result_image) {
+    document.getElementById("resImg").src = data.result_image + "?t=" + Date.now();
+  }
+}
+</script>
+</body>
+</html>
