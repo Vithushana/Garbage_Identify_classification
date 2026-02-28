@@ -282,6 +282,119 @@
       border-bottom: 1px dashed rgba(157,176,211,.45);
     }
     .smallLink:hover{ color: var(--accent2); border-bottom-color: rgba(106,228,255,.7); }
+
+    /* Modal Styles */
+    .modal{
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal.show{ display: flex; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn{ from{ opacity: 0; } to{ opacity: 1; } }
+
+    .modalContent{
+      background: linear-gradient(180deg, rgba(79,140,255,.15), rgba(106,228,255,.10));
+      border: 2px solid var(--accent);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(79,140,255,.35);
+      animation: slideUp 0.4s ease;
+      position: relative;
+    }
+    @keyframes slideUp{ from{ transform: translateY(40px); opacity: 0; } to{ transform: translateY(0); opacity: 1; } }
+
+    .modalClose{
+      position: absolute;
+      top: 16px; right: 16px;
+      background: none;
+      border: none;
+      color: var(--accent2);
+      font-size: 28px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px; height: 32px;
+      display: grid;
+      place-items: center;
+    }
+    .modalClose:hover{ transform: scale(1.15); }
+
+    .adviceContainer{
+      margin-bottom: 24px;
+    }
+
+    .adviceCard{
+      background: rgba(255,255,255,.08);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .adviceTitle{
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 8px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sevHigh{ color: #ff6b6b; }
+    .sevMed{ color: #ffd43b; }
+    .sevLow{ color: #51cf66; }
+
+    .adviceSubtitle{
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 12px 0;
+    }
+
+    .adviceText{
+      font-size: 13px;
+      line-height: 1.6;
+      color: rgba(231,238,252,.92);
+      margin: 8px 0;
+      white-space: pre-line;
+    }
+
+    .adviceAction{
+      font-weight: 600;
+      color: var(--accent2);
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .adviceTips{
+      font-size: 12px;
+      color: rgba(157,176,211,.85);
+      margin-top: 10px;
+      padding: 10px 0 0 0;
+      border-top: 1px solid var(--border);
+      white-space: pre-line;
+    }
+
+    .modalActions{
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      justify-content: flex-end;
+    }
+    .modalActions button{
+      padding: 12px 20px;
+      border-radius: 10px;
+    }
+    .modalActions .primary{
+      flex: 1;
+    }
   </style>
 </head>
 
@@ -370,6 +483,18 @@
             <img id="resImg" alt="Result" />
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advice Modal -->
+  <div class="modal" id="adviceModal">
+    <div class="modalContent">
+      <button class="modalClose" onclick="closeAdviceModal()">✕</button>
+      <h2 style="margin: 0 0 20px 0; color: var(--accent2);">🌍 Environmental Advice</h2>
+      <div class="adviceContainer" id="adviceContainer"></div>
+      <div class="modalActions">
+        <button class="primary" onclick="closeAdviceModal()">Got it! 👍</button>
       </div>
     </div>
   </div>
@@ -505,6 +630,9 @@
         resImg.style.display = "none";
         resPlaceholder.style.display = "block";
       }
+
+      // Show advice modal
+      showAdviceModal(data);
     }catch(err){
       outBadge.textContent = "Error";
       setError(err.message || "Something went wrong.");
@@ -542,6 +670,51 @@
       setError("Copy failed. Please copy manually.");
     });
   }
+
+  function getSeverityColor(severity){
+    if(severity === "high") return "sevHigh";
+    if(severity === "medium") return "sevMed";
+    return "sevLow";
+  }
+
+  function showAdviceModal(data){
+    const container = document.getElementById("adviceContainer");
+    container.innerHTML = "";
+
+    const detections = data.detections || [];
+    if(detections.length === 0){
+      container.innerHTML = '<div class="adviceCard" style="text-align:center;"><p>No garbage detected. Great! 🌱</p></div>';
+    }else{
+      detections.forEach((det, idx) => {
+        const advice = det.advice || {};
+        const sevClass = getSeverityColor(advice.severity);
+        
+        const card = document.createElement("div");
+        card.className = "adviceCard";
+        card.innerHTML = `
+          <div class="adviceTitle ${sevClass}">
+            ${det.class_name} (${(det.confidence * 100).toFixed(1)}% confidence)
+          </div>
+          <div class="adviceSubtitle">${advice.advice || ""}</div>
+          <div class="adviceText">${advice.details || ""}</div>
+          <div class="adviceAction">${advice.action || ""}</div>
+          <div class="adviceTips">${advice.tips || ""}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+    
+    document.getElementById("adviceModal").classList.add("show");
+  }
+
+  function closeAdviceModal(){
+    document.getElementById("adviceModal").classList.remove("show");
+  }
+
+  // Close modal on background click
+  document.getElementById("adviceModal").addEventListener("click", (e) => {
+    if(e.target.id === "adviceModal") closeAdviceModal();
+  });
 
   // init
   updateJson({});

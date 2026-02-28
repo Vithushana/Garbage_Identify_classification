@@ -13,6 +13,52 @@ RESULT_DIR = os.path.join("static", "results")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(RESULT_DIR, exist_ok=True)
 
+# Environmental advice for each garbage type
+GARBAGE_ADVICE = {
+    "PLASTIC": {
+        "severity": "high",
+        "advice": "🚨 NOT GOOD FOR THE ENVIRONMENT!",
+        "details": "Plastic takes 400+ years to decompose. It pollutes oceans and harms wildlife.",
+        "action": "❌ DO NOT LITTER - Remove immediately and recycle properly!",
+        "tips": "• Avoid single-use plastics\n• Use reusable bags & bottles\n• Recycle at designated centers"
+    },
+    "GLASS": {
+        "severity": "medium",
+        "advice": "⚠️ HANDLE WITH CARE!",
+        "details": "Glass takes 1 million years to decompose but is recyclable.",
+        "action": "♻️ Recycle in glass bins - DO NOT discard as regular trash",
+        "tips": "• Rinse before recycling\n• Separate by color if required\n• Check local recycling guidelines"
+    },
+    "METAL": {
+        "severity": "medium",
+        "advice": "♻️ RECYCLABLE MATERIAL",
+        "details": "Metal can be recycled infinitely without losing quality.",
+        "action": "✅ Collect and recycle at metal recycling centers",
+        "tips": "• Metal recycling reduces mining needs\n• Reduces energy consumption by 90%\n• Valuable material - may earn money!"
+    },
+    "CARDBOARD": {
+        "severity": "low",
+        "advice": "✅ BIODEGRADABLE",
+        "details": "Cardboard decomposes in 2-8 months and is easily recyclable.",
+        "action": "📦 Flatten and recycle with paper products",
+        "tips": "• Remove any plastic or tape\n• Keep dry when storing\n• Great for compost too"
+    },
+    "PAPER": {
+        "severity": "low",
+        "advice": "✅ BIODEGRADABLE",
+        "details": "Paper decomposes in 2-6 weeks naturally.",
+        "action": "📰 Add to paper recycling or compost",
+        "tips": "• Reuse paper for notes\n• Shred for packaging material\n• Compostable in gardens"
+    },
+    "BIODEGRADABLE": {
+        "severity": "low",
+        "advice": "✅ NATURAL & SAFE",
+        "details": "Organic waste decomposes naturally within weeks to months.",
+        "action": "🌱 Compost or dispose naturally",
+        "tips": "• Start a compost pile\n• Food waste reduces methane in landfills\n• Nutrient-rich for gardens"
+    }
+}
+
 @app.get("/")
 def home():
     return render_template("index.html")
@@ -41,11 +87,14 @@ def predict():
         cls_id = int(box.cls[0])
         conf = float(box.conf[0])
         x1, y1, x2, y2 = [float(v) for v in box.xyxy[0]]
+        class_name = model.names[cls_id]
+        advice = GARBAGE_ADVICE.get(class_name, {})
         detections.append({
             "class_id": cls_id,
-            "class_name": model.names[cls_id],
+            "class_name": class_name,
             "confidence": conf,
-            "bbox": [x1, y1, x2, y2]
+            "bbox": [x1, y1, x2, y2],
+            "advice": advice
         })
 
     # Create result image ourselves (always consistent)
