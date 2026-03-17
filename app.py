@@ -6,7 +6,30 @@ import cv2
 app = Flask(__name__)
 
 MODEL_PATH = "best.pt"
-model = YOLO(MODEL_PATH)
+# model cache for multiple model variants (e.g., YOLOv8, YOLOv11)
+_MODELS = {}
+
+def get_model(path_key: str):
+    """Return a YOLO model instance for the given path/key, caching instances."""
+    # map friendly keys to actual filenames
+    mapping = {
+        "default": MODEL_PATH,
+        "yolov11": "best_v11.pt",  # user can place a YOLOv11 weights file here
+    }
+    model_path = mapping.get(path_key, path_key)
+    # if absolute or relative path provided, use it directly
+    if model_path not in _MODELS:
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model weights not found: {model_path}")
+        _MODELS[model_path] = YOLO(model_path)
+    return _MODELS[model_path]
+
+# ensure default model loaded at startup (but don't crash if missing)
+try:
+    _MODELS[MODEL_PATH] = YOLO(MODEL_PATH)
+except Exception:
+    # lazy load on first request
+    pass
 
 UPLOAD_DIR = os.path.join("static", "uploads")
 RESULT_DIR = os.path.join("static", "results")
@@ -78,8 +101,15 @@ def predict():
     in_path = os.path.join(UPLOAD_DIR, in_name)
     f.save(in_path)
 
+    # Allow optional model selection (form field 'model'), default -> 'default'
+    model_key = request.form.get("model", "default")
+    try:
+        use_model = get_model(model_key)
+    except FileNotFoundError:
+        return jsonify({"error": f"Model not found: {model_key}"}), 400
+
     # Predict (save=False)
-    results = model.predict(source=in_path, conf=0.25, iou=0.5, save=False)
+    results = use_model.predict(source=in_path, conf=0.25, iou=0.5, save=False)
     r0 = results[0]
 
     detections = []
@@ -87,7 +117,7 @@ def predict():
         cls_id = int(box.cls[0])
         conf = float(box.conf[0])
         x1, y1, x2, y2 = [float(v) for v in box.xyxy[0]]
-        class_name = model.names[cls_id]
+        class_name = use_model.names.get(cls_id, str(cls_id))
         advice = GARBAGE_ADVICE.get(class_name, {})
         detections.append({
             "class_id": cls_id,
@@ -96,6 +126,14 @@ def predict():
             "bbox": [x1, y1, x2, y2],
             "advice": advice
         })
+
+    # Create a deduplicated list by class name, keeping the highest-confidence detection per class
+    unique_by_class = {}
+    for d in detections:
+        key = d["class_name"]
+        if key not in unique_by_class or d["confidence"] > unique_by_class[key]["confidence"]:
+            unique_by_class[key] = d
+    unique_detections = list(unique_by_class.values())
 
     # Create result image ourselves (always consistent)
     out_folder = os.path.join(RESULT_DIR, uid)
@@ -119,7 +157,8 @@ def predict():
         "input_image": input_url,
         "result_image": result_url,
         "best_prediction": best,   # one final answer (optional)
-        "detections": detections
+        "detections": detections,
+        "unique_detections": unique_detections
     })
 
 if __name__ == "__main__":

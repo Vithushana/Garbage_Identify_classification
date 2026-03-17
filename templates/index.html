@@ -219,10 +219,11 @@
       display:none;
     }
     .previewHint{
-      color: var(--muted);
-      font-size: 12px;
+      color: var(--text);
+      font-size: 13px;
       padding: 18px;
       text-align:center;
+      font-weight: 600;
     }
 
     /* Output */
@@ -247,9 +248,9 @@
     summary::-webkit-details-marker{ display:none; }
     .mono{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1.45;
-      color: rgba(231,238,252,.92);
+      color: rgba(231,238,252,.95);
       padding: 12px 14px 14px;
       border-top: 1px solid var(--border);
       max-height: 260px;
@@ -271,9 +272,10 @@
     }
     .imgOut .placeholder{
       padding: 18px;
-      color: var(--muted);
-      font-size: 12px;
+      color: var(--text);
+      font-size: 13px;
       text-align:center;
+      font-weight: 600;
     }
 
     .smallLink{
@@ -439,6 +441,10 @@
           </div>
 
           <div class="actions">
+            <select id="modelSelect" title="Model" style="padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.06);color:var(--text);">
+              <option value="default">Default (best.pt)</option>
+              <option value="yolov11">YOLOv11 (best_v11.pt)</option>
+            </select>
             <button class="primary" id="detectBtn" onclick="send()" disabled>Detect</button>
             <button id="clearBtn" onclick="clearAll()" disabled>Clear</button>
           </div>
@@ -517,6 +523,7 @@
 
   const resImg = document.getElementById("resImg");
   const resPlaceholder = document.getElementById("resPlaceholder");
+  const modelSelect = document.getElementById("modelSelect");
 
   function humanBytes(bytes){
     if (bytes < 1024) return bytes + " B";
@@ -610,6 +617,7 @@
     try{
       const fd = new FormData();
       fd.append("image", file);
+      try{ fd.append("model", (modelSelect && modelSelect.value) || "default"); }catch(e){}
 
       const r = await fetch("/predict", { method: "POST", body: fd });
 
@@ -681,7 +689,7 @@
     const container = document.getElementById("adviceContainer");
     container.innerHTML = "";
 
-    const detections = data.detections || [];
+    const detections = data.unique_detections || data.detections || [];
     if(detections.length === 0){
       container.innerHTML = '<div class="adviceCard" style="text-align:center;"><p>No garbage detected. Great! 🌱</p></div>';
     }else{
